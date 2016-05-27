@@ -1,0 +1,16 @@
+#!/bin/bash
+
+unset opt_d
+unset opt_u
+while getopts "du" flag; do
+  [ "$flag" = "?" ] && exit;
+  eval "opt_$flag=1"
+done
+echo '$opt_d': $opt_d
+echo '$opt_u': $opt_u
+
+# shift out all arguments up to first non-option argument
+shift $((OPTIND-1))
+
+config_file="$1"
+echo '$config_file': "$config_file"

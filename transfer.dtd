@@ -1,0 +1,4 @@
+<!ELEMENT sync (rules?)>
+<!ELEMENT rules (#PCDATA)>
+<!ATTLIST sync src CDATA #REQUIRED>
+<!ATTLIST sync dst CDATA #REQUIRED>

@@ -1,0 +1,22 @@
+#!/bin/bash
+
+src="source"
+dst="dest"
+
+echo "=> initialize $src and $dst directories"
+
+# remove directories and start over
+rm -rf $src $dst
+
+# create all directories (the -p option is necessary)
+mkdir -p $src/D/E $dst
+
+# create the files
+echo a >> $src/a.txt
+echo b >> $src/b.java
+echo c >> $src/c.txt
+echo d >> $src/D.conf
+echo e >> $src/D/E/e.txt
+echo f >> $src/D/f.txt
+echo j >> $dst/D.java
+echo t >> $dst/D.txt

@@ -1,0 +1,24 @@
+#!/bin/bash
+
+src="source"
+dst="dest"
+
+echo "==> ./setup1.sh"
+./setup1.sh
+echo "==> rsync -a $src/ $dst/"
+rsync -a $src/ $dst/
+
+sleep 1
+echo "==> after 1 sec. modifications"
+
+echo modify $src/a.txt
+echo a >> $src/a.txt
+echo modify $src/D.conf
+echo d >> $src/D.conf
+
+echo modify $dst/b.java
+echo b >> $dst/b.java
+echo modify $dst/c.txt
+echo c >> $dst/c.txt
+echo modify $dst/D/f.txt
+echo e >> $dst/D/f.txt
