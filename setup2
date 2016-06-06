@@ -3,8 +3,8 @@
 src="source"
 dst="dest"
 
-echo "==> ./setup1.sh"
-./setup1.sh
+echo "==> ./setup1"
+./setup1
 echo "==> rsync -a $src/ $dst/"
 rsync -a $src/ $dst/
 

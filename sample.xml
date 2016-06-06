@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE sync SYSTEM "/usr/local/share/xml/declaration/transfer.dtd">
 <sync 
-  src="~/program1/source" 
-  dst="~/program1/dest/">
+  src="/home/eric/program1/source" 
+  dst="/home/eric/program1/dest/">
   <rules>
 + *.txt
 

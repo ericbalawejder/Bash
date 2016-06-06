@@ -1,3 +1,178 @@
 #!/bin/bash
 
-echo "this is what I am writing"
+#set -x
+set -eu
+set -o pipefail
+
+display_usage() {
+  echo "usage: transfer [options] config-file.xml"
+  echo "options:"
+  echo "-d or -u: download or upload, resp. one and only one must be present"
+  echo "-f:       force transfer regardless of later timestamp on target file"
+  echo "-x:       delete items in target not present in source"
+  echo "-t:       (testing) show the contents of the exclusion file rules file,"
+  echo "          the full rsync command and terminate without doing anything"
+}
+
+if [ $# -le 0 ]
+then
+  echo ""
+  display_usage
+  echo ""
+  exit 1
+fi
+
+# Reset OPTIND in case getopts has been used previously in the shell.
+OPTIND=1
+rules_file="OUTPUT"
+download=0
+upload=0
+force=0
+delete=0
+testing=0
+
+while getopts ":dufxt" opt; do
+  case $opt in
+    d)
+      download=1
+      ;;
+    u)
+      upload=1
+      ;;
+    f)
+      force=1
+      ;;
+    x)
+      delete=1
+      ;;
+    t)
+      testing=1
+      ;;
+    *)
+      echo ""
+      echo "unknown argument: -$OPTARG" >&2
+      echo ""
+      display_usage
+      exit 1
+      ;;
+  esac
+done
+
+# shift out all arguments up to first non-option argument
+shift $((OPTIND-1))
+
+config_file="${1:-}"
+if [[ -z "$config_file" ]]
+then
+  echo ""
+  echo "ERROR: config file required"
+  echo ""
+  display_usage
+  exit 1
+fi
+
+if [ ! -f $config_file ]
+then
+  echo ""
+  echo "ERROR: $config_file does not exist"
+  echo ""
+  display_usage
+  exit 1
+fi
+
+if [[ $download -eq 1 ]]
+then
+  if [[ $upload -eq 1 ]]
+  then
+    echo ""
+    echo "download and upload options are mutually exclusive. Please choose one or the other"
+    echo ""
+    display_usage
+    exit 1
+  fi
+fi
+
+src="$(xmlpathval.py "$config_file" '/sync/@src')"
+dst="$(xmlpathval.py "$config_file" '/sync/@dst')"
+rules="$(xmlpathval.py "$config_file" '/sync/rules[1]/text()')"
+has_rules=0
+rsync_command="`which rsync` -a"
+
+rm $rules_file
+# parse the rules
+while read line; do
+  first_char=${line:0:1}
+  if [[ "$first_char" == "+" ]]
+  then
+    has_rules=1
+    echo "$line" >> $rules_file
+  fi
+  if [[ "$first_char" == "-" ]]
+  then
+    has_rules=1
+    echo "$line" >> $rules_file
+  fi
+done < <(echo "$rules")
+
+rsync_options=""
+if [[ $has_rules -eq 1 ]]
+then
+  rsync_options="$rsync_options --exclude-from=$rules_file"
+fi
+
+if [[ $force -eq 0 ]]
+then
+  rsync_options="$rsync_options -u"
+fi
+
+if [[ $delete -eq 1 ]]
+then
+  rsync_options="$rsync_options --delete"
+fi
+
+srcdst=""
+if [[ $upload -eq 1 ]]
+then
+  srcdst="$src $dst"
+fi
+if [[ $download -eq 1 ]]
+then
+  srcdst="$dst $src"
+fi
+
+if [[ $testing -eq 1 ]]
+then
+  rsync_options="$rsync_options -nv"
+  echo "$rsync_command $rsync_options $srcdst"
+  cat $rules_file
+  exit 0
+fi
+
+#dry_run_options="$rsync_options -nv"
+#echo "$rsync_command $dry_run_options $srcdst"
+#rm  "dry_run_output"
+#$rsync_command $dry_run_options $srcdst > "dry_run_output"
+
+#count=0
+#while read line; do
+#  ((++count))
+#done < "dry_run_output"
+
+#line_number=0
+#interesting_lines=()
+#while read line; do
+#  minus_one=$((count-1))
+#  minus_two=$((count-2))
+#  minus_three=$((count-3))
+#  if [ ! $line_number -eq 0 ] && [ ! $line_number -eq $minus_one ] && [ ! $line_number -eq $minus_two ] && [ ! $line_number -eq $minus_three ]
+#  then
+#    interesting_lines+=($line)
+#    echo $line
+#  fi
+#  ((++line_number))
+#done < "dry_run_output"
+#echo interesting_lines[0]
+#echo interesting_lines[1]
+$rsync_command $rsync_options $srcdst
+
+
