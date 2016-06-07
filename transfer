@@ -1,8 +1,11 @@
 #!/bin/bash
+# Eric Balawejder
 
 #set -x
-set -eu
-set -o pipefail
+#set -eu			# -e exits whenever anything returns a non-zero value
+					# -u makes it an error to reference a non-existent 
+					# environment variable 
+set -o pipefail		# raises error for misspelled commands
 
 display_usage() {
   echo "usage: transfer [options] config-file.xml"
@@ -14,7 +17,8 @@ display_usage() {
   echo "          the full rsync command and terminate without doing anything"
 }
 
-if [ $# -le 0 ]
+# if there are no arguments
+if [ $# -eq 0 ]
 then
   echo ""
   display_usage
@@ -31,8 +35,9 @@ force=0
 delete=0
 testing=0
 
+# argument cases
 while getopts ":dufxt" opt; do
-  case $opt in
+  case "$opt" in
     d)
       download=1
       ;;
@@ -61,6 +66,7 @@ done
 # shift out all arguments up to first non-option argument
 shift $((OPTIND-1))
 
+# if config file is not present after arguments:
 config_file="${1:-}"
 if [[ -z "$config_file" ]]
 then
@@ -71,6 +77,7 @@ then
   exit 1
 fi
 
+# if config file is not a regular file:
 if [ ! -f $config_file ]
 then
   echo ""
@@ -79,22 +86,60 @@ then
   display_usage
   exit 1
 fi
+##############################
+# shift arguments out and look for a non-option argument
+# shift $((OPTIND-1))
+# echo $1
+# echo "bye"
+# shift
+#
+# # start over after the non-option argument
+# OPTIND=1
+# while getopts  "*" flag
+# do
+#   echo "invalid argument: -$OPTARG"
+#   echo "hibye"
+# done
+###############################
 
+# if -d and -u are both present, show message
 if [[ $download -eq 1 ]]
 then
   if [[ $upload -eq 1 ]]
   then
     echo ""
-    echo "download and upload options are mutually exclusive. Please choose one or the other"
+    echo "download and upload options are mutually exclusive." 
+	echo "Please choose one or the other"
     echo ""
     display_usage
     exit 1
   fi
 fi
 
+# define src, dst and rules from the config xml file tags
 src="$(xmlpathval.py "$config_file" '/sync/@src')"
 dst="$(xmlpathval.py "$config_file" '/sync/@dst')"
 rules="$(xmlpathval.py "$config_file" '/sync/rules[1]/text()')"
+
+# if src is not a directory, exit with non-zero status:
+if [ ! -d $src ]
+then
+  echo ""
+  echo "ERROR: $src does not exist"
+  echo ""
+  exit 1
+fi
+
+# if dst is not a directory, exit with non-zero status:
+if [ ! -d $dst ]
+then
+  echo ""
+  echo "ERROR: $dst does not exist"
+  echo ""
+  exit 1
+fi
+
+# intialize has_rules to 0 and then check for rules
 has_rules=0
 rsync_command="`which rsync` -a"
 
@@ -114,32 +159,39 @@ while read line; do
   fi
 done < <(echo "$rules")
 
+# if there is a rules element:
 rsync_options=""
 if [[ $has_rules -eq 1 ]]
 then
   rsync_options="$rsync_options --exclude-from=$rules_file"
 fi
 
+# if -f (force) is not present, -u is the other rsynce option
 if [[ $force -eq 0 ]]
 then
   rsync_options="$rsync_options -u"
 fi
 
+# if -x (delete) is present, then --delete is an rsync option
 if [[ $delete -eq 1 ]]
 then
   rsync_options="$rsync_options --delete"
 fi
 
+# if -u (upload) is present, the dst value is the target
 srcdst=""
 if [[ $upload -eq 1 ]]
 then
   srcdst="$src $dst"
 fi
+
+# if -d (download) is present, the dst value is the target
 if [[ $download -eq 1 ]]
 then
   srcdst="$dst $src"
 fi
 
+# if -t (testing) is present, do nothing. dump the rsync command and dump the rules file
 if [[ $testing -eq 1 ]]
 then
   rsync_options="$rsync_options -nv"
@@ -148,31 +200,32 @@ then
   exit 0
 fi
 
-#dry_run_options="$rsync_options -nv"
-#echo "$rsync_command $dry_run_options $srcdst"
-#rm  "dry_run_output"
-#$rsync_command $dry_run_options $srcdst > "dry_run_output"
+dry_run_options="$rsync_options -nv"
+echo "$rsync_command $dry_run_options $srcdst"
+rm  "dry_run_output"
+$rsync_command $dry_run_options $srcdst > "dry_run_output"
 
-#count=0
-#while read line; do
-#  ((++count))
-#done < "dry_run_output"
+count=0
+while read line; do
+ ((++count))
+done < "dry_run_output"
 
-#line_number=0
-#interesting_lines=()
-#while read line; do
-#  minus_one=$((count-1))
-#  minus_two=$((count-2))
-#  minus_three=$((count-3))
-#  if [ ! $line_number -eq 0 ] && [ ! $line_number -eq $minus_one ] && [ ! $line_number -eq $minus_two ] && [ ! $line_number -eq $minus_three ]
-#  then
-#    interesting_lines+=($line)
-#    echo $line
-#  fi
-#  ((++line_number))
-#done < "dry_run_output"
-#echo interesting_lines[0]
-#echo interesting_lines[1]
+line_number=0
+interesting_lines=()
+while read line; do
+ minus_one=$((count-1))
+ minus_two=$((count-2))
+ minus_three=$((count-3))
+ if [ ! $line_number -eq 0 ] && [ ! $line_number -eq $minus_one ] && [ ! $line_number -eq $minus_two ] && [ ! $line_number -eq $minus_three ]
+ then
+   interesting_lines+=($line)
+   echo $line
+ fi
+ ((++line_number))
+done < "dry_run_output"
+echo interesting_lines[0]
+echo interesting_lines[1]
+
 $rsync_command $rsync_options $srcdst
 
 
