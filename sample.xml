@@ -5,7 +5,6 @@
   dst="/vagrant/Bash/dest/">
   <rules>
 + *.txt
- 
 - *
   </rules>
 </sync>

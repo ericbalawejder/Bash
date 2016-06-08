@@ -1,4 +1,6 @@
 sending incremental file list
+deleting D.txt
+a.txt
 
-sent 95 bytes  received 12 bytes  214.00 bytes/sec
-total size is 8  speedup is 0.07 (DRY RUN)
+sent 88 bytes  received 24 bytes  224.00 bytes/sec
+total size is 6  speedup is 0.05 (DRY RUN)

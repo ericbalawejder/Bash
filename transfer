@@ -29,7 +29,7 @@ fi
 # Reset OPTIND in case getopts has been used previously in the shell.
 OPTIND=1
 
-# a file to hold the output of commands
+# a file to hold the output of commands (parse-config)
 output_file="OUTPUT"
 
 # a file to hold the edited rules
@@ -152,9 +152,10 @@ rsync_command="`which rsync` -a"
 # intialize has_rules to 0 and then check for rules
 has_rules=0
 
-rm $rules_file
+cat /dev/null > $rules_file
+#rm $rules_file
 
-# parse the rules
+# parse the rules, extract only the first character. ${parameter:offset:length}
 while read line; do
   first_char=${line:0:1}
   if [[ "$first_char" == "+" ]]
