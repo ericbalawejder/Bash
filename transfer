@@ -1,11 +1,11 @@
 #!/bin/bash
-# Eric Balawejder
+# Eric Balawejder program 1
 
 #set -x
 #set -eu			# -e exits whenever anything returns a non-zero value
 					# -u makes it an error to reference a non-existent 
 					# environment variable 
-set -o pipefail		# raises error for misspelled commands
+#set -o pipefail	# raises error for misspelled commands
 
 display_usage() {
   echo "usage: transfer [options] config-file.xml"
@@ -26,17 +26,20 @@ then
   exit 1
 fi
 
-# Reset OPTIND in case getopts has been used previously in the shell.
-OPTIND=1
-
 # a file to hold the output of commands 
+#output_file=/tmp/OUTPUT_$$
 output_file="OUTPUT"
 
 # a file to hold the filtered dry run output
+#dry_run_output=/tmp/dry_run_output_$$
 dry_run_output="dry_run_output"
 
 # a file to hold the edited rules
+#rules_file=/tmp/RULES_$$
 rules_file="RULES"
+
+# reset OPTIND in case getopts has been used previously in the shell.
+OPTIND=1
 
 # argument flag values
 download=0
@@ -96,21 +99,6 @@ then
   display_usage
   exit 1
 fi
-##############################
-# shift arguments out and look for a non-option argument
-# shift $((OPTIND-1))
-# echo $1
-# echo "bye"
-# shift
-#
-# # start over after the non-option argument
-# OPTIND=1
-# while getopts  "*" flag
-# do
-#   echo "invalid argument: -$OPTARG"
-#   echo "hibye"
-# done
-###############################
 
 # if -d and -u are both present, show message
 if [[ $download -eq 1 ]]
@@ -157,7 +145,7 @@ rsync_command="`which rsync` -a"
 has_rules=0
 
 # clear the rules file
-cat /dev/null > $rules_file
+#cat /dev/null > $rules_file
 #rm $rules_file
 
 # parse the rules, extract only the first character. ${parameter:offset:length}
@@ -208,33 +196,6 @@ then
   srcdst="$dst $src"
 fi
 
-# if -t (testing) is present, do nothing. dump the rsync command and dump the rules file
-if [[ $testing -eq 1 ]]
-then
-  rsync_options="$rsync_options -nv" # -nv for dry run
-  echo "$rsync_command $rsync_options $srcdst"
-  cat $rules_file
-  exit 0
-fi
-
-# add -nv flags to rsync command for dry run
-dry_run_options="$rsync_options -nv"
-echo "$rsync_command $dry_run_options $srcdst"
-
-# place rsync output in temporary OUTPUT file
-$rsync_command $dry_run_options $srcdst > "OUTPUT"
-
-#cat /dev/null > $dry_run_output
-#cat $dry_run_output < /dev/null
-#rm "dry_run_output"
-$rsync_command $dry_run_options $srcdst > "dry_run_output"
-
-# show output of rsync command
-echo "$(<dry_run_output)"
-
-# when SIGINT is revieved (Ctrl-C in shell), call cleanup
-trap "cleanup" INT
-
 # cleanup function
 cleanup() {
 	rm -f $output_file
@@ -243,6 +204,48 @@ cleanup() {
 	exit
 }
 
+# if -t (testing) is present, do nothing. dump the rsync command and dump the rules file
+if [[ $testing -eq 1 ]]
+then
+  rsync_options="$rsync_options -nv" 
+  echo "$rsync_command $rsync_options $srcdst"
+  cat $rules_file
+  cleanup
+  exit 0
+fi
+
+# add -nv flags to rsync command for dry run
+dry_run_options="$rsync_options -nv"
+
+# show rsync dry run command
+echo "$rsync_command $dry_run_options $srcdst"
+
+# place rsync output in temporary OUTPUT file
+$rsync_command $dry_run_options $srcdst > "OUTPUT"
+
+#cat /dev/null > $dry_run_output
+#cat $dry_run_output < /dev/null
+#rm "dry_run_output"
+
+# place rsync output in dry run output and filter out the rules
+#$rsync_command $dry_run_options $srcdst > "dry_run_output"
+
+# remove the first line and the last three lines from the OUTPUT file
+# cat remaining lines to dry_run_output file
+sed '$d' OUTPUT | sed '$d' | sed '$d' | sed '1d' > dry_run_output
+
+# show files to be transfered
+echo "$(<dry_run_output)"
+
+# if file is of size zero: there are no files to be transfered
+if [ ! -s $dry_run_output ]
+then
+	echo "There is nothing to do."
+	cleanup
+	exit 0
+fi
+
+# prompt the user after the dry run
 echo "Complete transfer actions? y/N"
 read x
 if [ "$x" = "y" ] || [ "$x" = "Y" ]
@@ -256,3 +259,6 @@ then
 	cleanup
 	exit 0
 fi
+
+# when SIGINT is revieved (Ctrl-C in shell), call cleanup
+trap "cleanup" INT
