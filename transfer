@@ -204,31 +204,25 @@ cleanup() {
 	exit
 }
 
+# add -nv flags to rsync command for dry run
+dry_run_options="$rsync_options -nv"
+
 # if -t (testing) is present, do nothing. dump the rsync command and dump the rules file
 if [[ $testing -eq 1 ]]
 then
-  rsync_options="$rsync_options -nv" 
-  echo "$rsync_command $rsync_options $srcdst"
+  #rsync_options="$rsync_options -nv" 
+  echo "$rsync_command $dry_run_options $srcdst"
   cat $rules_file
+  # delete temp files
   cleanup
   exit 0
 fi
-
-# add -nv flags to rsync command for dry run
-dry_run_options="$rsync_options -nv"
 
 # show rsync dry run command
 echo "$rsync_command $dry_run_options $srcdst"
 
 # place rsync output in temporary OUTPUT file
 $rsync_command $dry_run_options $srcdst > "OUTPUT"
-
-#cat /dev/null > $dry_run_output
-#cat $dry_run_output < /dev/null
-#rm "dry_run_output"
-
-# place rsync output in dry run output and filter out the rules
-#$rsync_command $dry_run_options $srcdst > "dry_run_output"
 
 # remove the first line and the last three lines from the OUTPUT file
 # cat remaining lines to dry_run_output file
@@ -241,11 +235,12 @@ echo "$(<dry_run_output)"
 if [ ! -s $dry_run_output ]
 then
 	echo "There is nothing to do."
+	# delete temp files
 	cleanup
 	exit 0
 fi
 
-# prompt the user after the dry run
+# prompt the user after the dry run, default action exits
 echo "Complete transfer actions? y/N"
 read x
 if [ "$x" = "y" ] || [ "$x" = "Y" ]
@@ -262,3 +257,7 @@ fi
 
 # when SIGINT is revieved (Ctrl-C in shell), call cleanup
 trap "cleanup" INT
+
+# cleanup temp files on any action not "y"
+cleanup
+exit 0
