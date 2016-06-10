@@ -80,7 +80,7 @@ done
 # shift out all arguments up to first non-option argument
 shift $((OPTIND-1))
 
-# if config file is not present after arguments:
+# if config file is not present after arguments, show usage and exit 1
 config_file="${1:-}"
 if [[ -z "$config_file" ]]
 then
@@ -91,7 +91,7 @@ then
   exit 1
 fi
 
-# if config file is not a regular file:
+# if config file is not a regular file, show usage and exit 1
 if [ ! -f $config_file ]
 then
   echo ""
@@ -101,7 +101,7 @@ then
   exit 1
 fi
 
-# if -d and -u are both present, show message
+# if -d and -u are both present, show message and exit 1
 if [[ $download -eq 1 ]]
 then
   if [[ $upload -eq 1 ]]
@@ -120,7 +120,7 @@ src="$(xmlpathval.py "$config_file" '/sync/@src')"
 dst="$(xmlpathval.py "$config_file" '/sync/@dst')"
 rules="$(xmlpathval.py "$config_file" '/sync/rules[1]/text()')"
 
-# if src is the empty string, exit with non-zero status:
+# if src is the empty string, show message and exit 1
 if [ -z $src ]
 then
   echo ""
@@ -129,7 +129,7 @@ then
   exit 1
 fi
 
-# if dst is the empty string, exit with non-zero status:
+# if dst is the empty string, show message and exit 1
 if [ -z $dst ]
 then
   echo ""
@@ -146,6 +146,8 @@ rsync_command="`which rsync` -a"
 has_rules=0
 
 # parse the rules, extract only the first character. ${parameter:offset:length}
+# this does not create "normalized" form. I could not get the correct string 
+# matching pattern or regular expression to work properly
 while read line; do
   first_char=${line:0:1}
   if [[ "$first_char" == "+" ]]
@@ -207,7 +209,6 @@ dry_run_options="$rsync_options -nv"
 # if -t (testing) is present, do nothing. dump the rsync command and dump the rules file
 if [[ $testing -eq 1 ]]
 then
-  #rsync_options="$rsync_options -nv" 
   echo "$rsync_command $dry_run_options $srcdst"
   cat $rules_file
   # delete temp files
@@ -226,7 +227,6 @@ $rsync_command $dry_run_options $srcdst > $output_file
 sed '$d' $output_file | sed '$d' | sed '$d' | sed '1d' > $dry_run_output
 
 # show files to be transfered
-#echo "$(<dry_run_output)"
 cat $dry_run_output
 
 # if file is of size zero: there are no files to be transfered, exit 0
