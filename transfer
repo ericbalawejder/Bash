@@ -7,13 +7,14 @@
 					# environment variable 
 #set -o pipefail	# raises error for misspelled commands
 
+# rsync usage 
 display_usage() {
   echo "usage: transfer [options] config-file.xml"
   echo "options:"
   echo "-d or -u: download or upload, resp. one and only one must be present"
   echo "-f:       force transfer regardless of later timestamp on target file"
   echo "-x:       delete items in target not present in source"
-  echo "-t:       (testing) show the contents of the exclusion file rules file,"
+  echo "-t:       (testing) show the contents of the exclusion rules file,"
   echo "          the full rsync command and terminate without doing anything"
 }
 
@@ -27,16 +28,16 @@ then
 fi
 
 # a file to hold the output of commands 
-#output_file=/tmp/OUTPUT_$$
-output_file="OUTPUT"
+output_file=/tmp/OUTPUT_$$
+#output_file="OUTPUT"
 
 # a file to hold the filtered dry run output
-#dry_run_output=/tmp/dry_run_output_$$
-dry_run_output="dry_run_output"
+dry_run_output=/tmp/dry_run_output_$$
+#dry_run_output="dry_run_output"
 
 # a file to hold the edited rules
-#rules_file=/tmp/RULES_$$
-rules_file="RULES"
+rules_file=/tmp/RULES_$$
+#rules_file="RULES"
 
 # reset OPTIND in case getopts has been used previously in the shell.
 OPTIND=1
@@ -119,20 +120,20 @@ src="$(xmlpathval.py "$config_file" '/sync/@src')"
 dst="$(xmlpathval.py "$config_file" '/sync/@dst')"
 rules="$(xmlpathval.py "$config_file" '/sync/rules[1]/text()')"
 
-# if src is not a directory, exit with non-zero status:
-if [ ! -d $src ]
+# if src is the empty string, exit with non-zero status:
+if [ -z $src ]
 then
   echo ""
-  echo "ERROR: $src does not exist"
+  echo "ERROR: src is empty"
   echo ""
   exit 1
 fi
 
-# if dst is not a directory, exit with non-zero status:
-if [ ! -d $dst ]
+# if dst is the empty string, exit with non-zero status:
+if [ -z $dst ]
 then
   echo ""
-  echo "ERROR: $dst does not exist"
+  echo "ERROR: dst is empty"
   echo ""
   exit 1
 fi
@@ -144,10 +145,6 @@ rsync_command="`which rsync` -a"
 # intialize has_rules to 0 and then check for rules
 has_rules=0
 
-# clear the rules file
-#cat /dev/null > $rules_file
-#rm $rules_file
-
 # parse the rules, extract only the first character. ${parameter:offset:length}
 while read line; do
   first_char=${line:0:1}
@@ -156,7 +153,7 @@ while read line; do
     has_rules=1
     echo "$line" >> $rules_file
   fi
-  
+
   if [[ "$first_char" == "-" ]]
   then
     has_rules=1
@@ -164,7 +161,7 @@ while read line; do
   fi
 done < <(echo "$rules")
 
-# if there is a rules element:
+# if there is a rules element, display "--exclude-from"
 rsync_options=""
 if [[ $has_rules -eq 1 ]]
 then
@@ -177,7 +174,7 @@ then
   rsync_options="$rsync_options -u"
 fi
 
-# if -x (delete) is present, then --delete is an rsync option
+# if -x (delete) is present, then "--delete" is an rsync option
 if [[ $delete -eq 1 ]]
 then
   rsync_options="$rsync_options --delete"
@@ -222,16 +219,17 @@ fi
 echo "$rsync_command $dry_run_options $srcdst"
 
 # place rsync output in temporary OUTPUT file
-$rsync_command $dry_run_options $srcdst > "OUTPUT"
+$rsync_command $dry_run_options $srcdst > $output_file
 
 # remove the first line and the last three lines from the OUTPUT file
-# cat remaining lines to dry_run_output file
-sed '$d' OUTPUT | sed '$d' | sed '$d' | sed '1d' > dry_run_output
+# send remaining lines to dry_run_output file
+sed '$d' $output_file | sed '$d' | sed '$d' | sed '1d' > $dry_run_output
 
 # show files to be transfered
-echo "$(<dry_run_output)"
+#echo "$(<dry_run_output)"
+cat $dry_run_output
 
-# if file is of size zero: there are no files to be transfered
+# if file is of size zero: there are no files to be transfered, exit 0
 if [ ! -s $dry_run_output ]
 then
 	echo "There is nothing to do."
@@ -240,7 +238,7 @@ then
 	exit 0
 fi
 
-# prompt the user after the dry run, default action exits
+# prompt the user after the dry run, default action exit 0
 echo "Complete transfer actions? y/N"
 read x
 if [ "$x" = "y" ] || [ "$x" = "Y" ]
