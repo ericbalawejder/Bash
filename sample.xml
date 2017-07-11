@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE sync SYSTEM "/usr/local/share/xml/declaration/transfer.dtd">
 <sync 
-  src="/home/eric/program1/source/" 
-  dst="/home/eric/program1/dest/">
+  src="/vagrant/Bash/source/" 
+  dst="/vagrant/Bash/dest/">
   <rules>
-+ *.txt
-- *
+   + *.txt
+   - *
   </rules>
 </sync>
