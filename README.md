@@ -51,7 +51,8 @@ The XML configuration files used by transfer have this format:
 ```
 
 The DTD file spells out the most basic requirements:
-**----------------------------------------/usr/local/share/xml/declaration/transfer.dtd**
+
+**/usr/local/share/xml/declaration/transfer.dtd**
 ```shell
 <!ELEMENT sync (rules?)>
 <!ELEMENT rules (#PCDATA)>
@@ -133,9 +134,8 @@ $ ./transfer -dx sample.xml
 
 # Final step
 
-The final step to get the target executable:
+From the top level directory, the final step to get the target executable:
 ```shell
-$ cd ~/program1
 $ sudo cp transfer /usr/local/bin/
 ```
 which should be usable as "transfer" anywhere on your system.
